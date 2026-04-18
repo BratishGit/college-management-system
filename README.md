@@ -49,7 +49,7 @@ A comprehensive **College Management System (CMS)** with complete academic, admi
 
 ##  Complete Feature List
 
-### ** Admin Powers (Supreme Controller)**
+### **Admin Powers (Supreme Controller)**
 
 **Student Management:**
 -  Add new students with mentor assignment
@@ -88,7 +88,7 @@ A comprehensive **College Management System (CMS)** with complete academic, admi
 
 ---
 
-### ** Teacher Capabilities**
+### **Teacher Capabilities**
 
 **Attendance Management:**
 -  Select class/subject
@@ -122,7 +122,7 @@ A comprehensive **College Management System (CMS)** with complete academic, admi
 
 ---
 
-### ** Student Features**
+### **Student Features**
 
 **Attendance Tracking:**
 -  Subject-wise attendance bar graphs
