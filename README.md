@@ -7,7 +7,7 @@ A comprehensive **College Management System (CMS)** with complete academic, admi
 
 ##  Latest Updates & Features
 
-### ** New Features Added:**
+### **New Features Added:**
 
 #### **1. Teacher Attendance System**
 - **Class Selection Interface** - Teachers select their subject/class
