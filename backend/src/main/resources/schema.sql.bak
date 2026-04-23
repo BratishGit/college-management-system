@@ -1,0 +1,264 @@
+-- Enterprise College Management System Schema (MySQL)
+
+-- 1. Users & Authentication
+CREATE TABLE IF NOT EXISTS users (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(20) NOT NULL
+);
+
+-- 2. Faculty / Teachers
+CREATE TABLE IF NOT EXISTS teachers (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    department VARCHAR(50) NOT NULL,
+    designation VARCHAR(50),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- 3. Students
+CREATE TABLE IF NOT EXISTS students (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    roll_number VARCHAR(20) NOT NULL UNIQUE,
+    department VARCHAR(50) NOT NULL,
+    current_semester INT DEFAULT 1,
+    mentor_id BIGINT,
+    residential_status VARCHAR(20), -- HOSTEL, DAY_SCHOLAR
+    admission_status VARCHAR(20) DEFAULT 'APPLIED', -- APPLIED, ADMITTED, REJECTED, ALUMNI
+    transport_mode VARCHAR(20),
+    hostel_allocation_id BIGINT,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (mentor_id) REFERENCES teachers(id)
+);
+
+CREATE INDEX idx_student_roll ON students(roll_number);
+CREATE INDEX idx_student_dept ON students(department);
+
+-- 4. Courses / Subjects
+CREATE TABLE IF NOT EXISTS courses (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(20) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    credits INT NOT NULL,
+    semester INT NOT NULL,
+    teacher_id BIGINT,
+    FOREIGN KEY (teacher_id) REFERENCES teachers(id)
+);
+
+CREATE INDEX idx_course_code ON courses(code);
+
+-- 5. Enrollments (Student-Course Mapping)
+CREATE TABLE IF NOT EXISTS enrollments (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    student_id BIGINT,
+    course_id BIGINT,
+    enrollment_date DATE DEFAULT CURRENT_DATE,
+    status VARCHAR(20) DEFAULT 'ACTIVE', -- ACTIVE, COMPLETED, DROPPED
+    FOREIGN KEY (student_id) REFERENCES students(id),
+    FOREIGN KEY (course_id) REFERENCES courses(id),
+    UNIQUE (student_id, course_id)
+);
+
+-- 6. Attendance
+CREATE TABLE IF NOT EXISTS attendance (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    student_id BIGINT,
+    course_id BIGINT,
+    date DATE NOT NULL,
+    is_present BOOLEAN DEFAULT TRUE,
+    FOREIGN KEY (course_id) REFERENCES courses(id)
+);
+
+CREATE INDEX idx_attendance_student_date ON attendance(student_id, date);
+
+-- 7. Fees & Payments
+CREATE TABLE IF NOT EXISTS fees (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    student_id BIGINT,
+    total_amount DOUBLE NOT NULL,
+    paid_amount DOUBLE DEFAULT 0,
+    due_date DATE,
+    status VARCHAR(20) DEFAULT 'PENDING', -- PENDING, PARTIAL, PAID, OVERDUE
+    semester INT,
+    FOREIGN KEY (student_id) REFERENCES students(id)
+);
+
+CREATE TABLE IF NOT EXISTS fee_payments (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    fee_id BIGINT,
+    amount DOUBLE NOT NULL,
+    payment_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    transaction_id VARCHAR(100) UNIQUE,
+    payment_method VARCHAR(50),
+    FOREIGN KEY (fee_id) REFERENCES fees(id)
+);
+
+-- 8. Timetable
+CREATE TABLE IF NOT EXISTS timetable (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    course_id BIGINT,
+    teacher_id BIGINT,
+    day_of_week VARCHAR(10) NOT NULL, -- MONDAY, TUESDAY, etc.
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    room_number VARCHAR(20),
+    FOREIGN KEY (course_id) REFERENCES courses(id),
+    FOREIGN KEY (teacher_id) REFERENCES teachers(id)
+);
+
+-- 9. Exam Schedules & Results
+CREATE TABLE IF NOT EXISTS exam_schedules (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    course_id BIGINT,
+    exam_date DATETIME NOT NULL,
+    room VARCHAR(50),
+    duration_minutes INT,
+    FOREIGN KEY (course_id) REFERENCES courses(id)
+);
+
+CREATE TABLE IF NOT EXISTS results (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    student_id BIGINT,
+    course_id BIGINT,
+    internal_marks DOUBLE,
+    external_marks DOUBLE,
+    total_marks DOUBLE,
+    grade VARCHAR(5),
+    grade_points DOUBLE,
+    semester INT,
+    is_locked BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (student_id) REFERENCES students(id),
+    FOREIGN KEY (course_id) REFERENCES courses(id)
+);
+
+-- 10. Placements
+CREATE TABLE IF NOT EXISTS companies (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    industry VARCHAR(100),
+    website VARCHAR(255)
+);
+
+CREATE TABLE IF NOT EXISTS placement_drives (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    company_id BIGINT,
+    drive_date DATE,
+    job_role VARCHAR(100),
+    package_lpa DOUBLE,
+    eligibility_cgpa DOUBLE,
+    status VARCHAR(20) DEFAULT 'UPCOMING',
+    FOREIGN KEY (company_id) REFERENCES companies(id)
+);
+
+CREATE TABLE IF NOT EXISTS placement_applications (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    drive_id BIGINT,
+    student_id BIGINT,
+    status VARCHAR(20) DEFAULT 'APPLIED', -- APPLIED, SHORTLISTED, SELECTED, REJECTED
+    applied_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (drive_id) REFERENCES placement_drives(id),
+    FOREIGN KEY (student_id) REFERENCES students(id)
+);
+
+-- 11. Workflows (Leaves, Admissions)
+CREATE TABLE IF NOT EXISTS leave_requests (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT,
+    reason TEXT,
+    start_date DATE,
+    end_date DATE,
+    status VARCHAR(20) DEFAULT 'PENDING', -- PENDING_FACULTY, PENDING_ADMIN, APPROVED, REJECTED
+    type VARCHAR(20),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- 12. Audit Logs
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    action VARCHAR(100) NOT NULL,
+    performer_id BIGINT,
+    target_entity VARCHAR(50),
+    entity_id BIGINT,
+    details TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (performer_id) REFERENCES users(id)
+);
+
+-- 13. Hostel Management
+CREATE TABLE IF NOT EXISTS hostels (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    capacity INT NOT NULL,
+    warden_id BIGINT,
+    FOREIGN KEY (warden_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS hostel_rooms (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    hostel_id BIGINT,
+    room_number VARCHAR(20) NOT NULL,
+    capacity INT NOT NULL,
+    occupancy INT DEFAULT 0,
+    FOREIGN KEY (hostel_id) REFERENCES hostels(id)
+);
+
+CREATE TABLE IF NOT EXISTS hostel_allocations (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    student_id BIGINT,
+    room_id BIGINT,
+    allocated_date DATE,
+    status VARCHAR(20) DEFAULT 'ACTIVE',
+    FOREIGN KEY (student_id) REFERENCES students(id),
+    FOREIGN KEY (room_id) REFERENCES hostel_rooms(id)
+);
+
+-- 14. Library Management
+CREATE TABLE IF NOT EXISTS library_books (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    author VARCHAR(100) NOT NULL,
+    isbn VARCHAR(50) UNIQUE,
+    category VARCHAR(50),
+    total_copies INT DEFAULT 1,
+    available_copies INT DEFAULT 1,
+    location VARCHAR(50)
+);
+
+CREATE TABLE IF NOT EXISTS book_issues (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    book_id BIGINT,
+    user_id BIGINT,
+    issue_date DATE NOT NULL,
+    due_date DATE NOT NULL,
+    return_date DATE,
+    status VARCHAR(20) DEFAULT 'ISSUED', -- ISSUED, RETURNED, OVERDUE, LOST
+    fine_amount DOUBLE DEFAULT 0,
+    FOREIGN KEY (book_id) REFERENCES library_books(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- 15. Transport Management
+CREATE TABLE IF NOT EXISTS bus_routes (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    route_name VARCHAR(100) NOT NULL,
+    bus_number VARCHAR(50) NOT NULL,
+    driver_name VARCHAR(100),
+    driver_contact VARCHAR(20),
+    capacity INT NOT NULL,
+    departure_time TIME,
+    stops TEXT
+);
+
+CREATE TABLE IF NOT EXISTS transport_allocations (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    student_id BIGINT,
+    route_id BIGINT,
+    pickup_point VARCHAR(100),
+    status VARCHAR(20) DEFAULT 'ACTIVE',
+    FOREIGN KEY (student_id) REFERENCES students(id),
+    FOREIGN KEY (route_id) REFERENCES bus_routes(id)
+);
